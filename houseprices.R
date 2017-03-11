@@ -365,11 +365,14 @@ base.learners = list(
 
 
 
-indx <- sapply(sample_train, is.character)
-sample_train[indx] <- lapply(sample_train[indx], function(x) as.factor(x))
+indx <- sapply(sample_train, is.factor)
+sample_train[indx] <- lapply(sample_train[indx], function(x) NULL)
 
-indx <- sapply(sample_test, is.character)
-sample_test[indx] <- lapply(sample_test[indx], function(x) as.factor(x))
+indx <- sapply(sample_test, is.factor)
+sample_test[indx] <- lapply(sample_test[indx], function(x) NULL)
+
+sample_train$PoolArea <- NULL
+sample_test$PoolArea <- NULL
 
 regr.task <- makeRegrTask(id = "train5",
                           data = data.frame(sample_train[, !colnames(sample_train) %in% c("Id")]),
@@ -388,7 +391,18 @@ res = tuneParams(lrn, regr.task, rdesc, par.set = ps, control = ctrl, show.info 
 #Iterated F-Racing for mixed spaces and dependencies ----
 
 
-
+ps = makeParamSet(
+  makeNumericParam("C", lower = -12, upper = 12, trafo = function(x) 2^x),
+  makeDiscreteParam("kernel", values = c("vanilladot", "polydot", "rbfdot")),
+  makeNumericParam("sigma", lower = -12, upper = 12, trafo = function(x) 2^x,
+                   requires = quote(kernel == "rbfdot")),
+  makeIntegerParam("degree", lower = 2L, upper = 5L,
+                   requires = quote(kernel == "polydot"))
+)
+ctrl = makeTuneControlIrace(maxExperiments = 200L)
+rdesc = makeResampleDesc("Holdout")
+res = tuneParams("classif.ksvm", iris.task, rdesc, par.set = ps, control = ctrl, show.info = FALSE)
+print(head(as.data.frame(res$opt.path)))
 
 
 
